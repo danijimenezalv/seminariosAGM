@@ -233,11 +233,6 @@ function update(delta)
         grupoPentagono.children[i].position.copy(pentagonVertices[i]);
     }
 
-
-    // cubo.position.set( -1-effectController.separacion/2, 0, 0 );
-    // esfera.position.set( 1+effectController.separacion/2, 0, 0 );
-    // cubo.material.setValues( { color: effectController.colorsuelo } );
-    // esferaCubo.rotation.y = effectController.giroY * Math.PI/180;
     TWEEN.update();
 }
 
