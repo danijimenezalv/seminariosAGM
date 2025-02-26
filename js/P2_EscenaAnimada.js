@@ -24,8 +24,6 @@ let renderer, scene, camera;
 
 // Otras globales
 let cameraControls, effectController;
-let esferaCubo,cubo,esfera;
-let angulo = 0;
 /*******************
  * TO DO: Variables globales de la aplicacion
  *******************/
