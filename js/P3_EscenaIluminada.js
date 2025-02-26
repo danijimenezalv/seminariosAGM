@@ -35,6 +35,8 @@ let grupoPentagono = new THREE.Group();
 let R, angleStep, pentagonVertices, pentagonLine;
 let animando = false;
 
+let ambiental, direccional, focal;
+
 // Acciones
 init();
 loadScene();
@@ -76,15 +78,15 @@ function init()
      * - Una direccional
      * - Una focal
      *******************/
-    const ambiental = new THREE.AmbientLight(0x222222, 1);
+    ambiental = new THREE.AmbientLight(0x222222, 1);
     scene.add(ambiental);
 
-    const direccional = new THREE.DirectionalLight(0xFFFFFF,0.3);
+    direccional = new THREE.DirectionalLight(0xFFFFFF,0.3);
     direccional.position.set(-1,1,-1);
     direccional.castShadow = true;
     scene.add(direccional);
 
-    const focal = new THREE.SpotLight(0xFFFFFF,1);
+    focal = new THREE.SpotLight(0xFFFFFF,1);
     focal.position.set(-2,7,4);
     focal.target.position.set(0,0,0);
     focal.angle= Math.PI/7;
@@ -140,7 +142,7 @@ function loadScene()
     /*******************
      * TO DO: Construir un suelo en el plano XZ
      *******************/
-    const suelo = new THREE.Mesh( new THREE.PlaneGeometry(10,10, 10,10), matsuelo );
+    suelo = new THREE.Mesh( new THREE.PlaneGeometry(10,10, 10,10), matsuelo );
     suelo.rotation.x = -Math.PI / 2;
     scene.add(suelo);
 
@@ -178,7 +180,7 @@ function loadScene()
     for (let i = 0; i < 5; i++) {
         const figura = new THREE.Mesh(geometrias[i], matcubo);
         figura.position.copy(pentagonVertices[i]);
-        figura.position.y = pentagonLine.position.y + 1;
+        figura.position.y = pentagonLine.position.y + 4;
         figura.scale.set(0.8, 0.8, 0.8);
         grupoPentagono.add(figura);
         figuras.push(figura);
@@ -300,8 +302,13 @@ function loadGUI()
     const p3 = gui.addFolder("controles P3" );
     p3.add(effectController, "sombras")
       .onChange(v=>{
-        v = !v;
-        grupoPentagono.castShadow = v;
+        focal.castShadow = v;
+        direccional.castShadow = v;
+        ambiental.castShadow = v;
+        grupoPentagono.children.forEach(
+            figura => figura.castShadow = v
+        );
+
     });
     p3.addColor(effectController, "colorsuelo")
      .name("Color moqueta")
