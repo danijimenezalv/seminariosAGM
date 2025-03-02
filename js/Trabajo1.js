@@ -540,14 +540,14 @@ function createCapturedAreas() {
   const whiteArea = new THREE.Mesh(whiteAreaGeometry, areaMaterial);
   whiteArea.position.set(-6.5, -0.1, 0);
   whiteArea.receiveShadow = true;
-  scene.add(whiteArea);
+  piezas.add(whiteArea);
 
   // Área para piezas negras capturadas (derecha)
   const blackAreaGeometry = new THREE.BoxGeometry(2, 0.05, 8);
   const blackArea = new THREE.Mesh(blackAreaGeometry, areaMaterial);
   blackArea.position.set(6.5, -0.1, 0);
   blackArea.receiveShadow = true;
-  scene.add(blackArea);
+  piezas.add(blackArea);
 
   // Etiquetas para las áreas (opcional)
   // Puedes crear geometrías de texto o utilizar sprites con texturas
