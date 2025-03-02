@@ -334,15 +334,7 @@ function createPiece(type, color, position) {
   return pieceGroup;
 }
 
-function loadScene() {
-  // Crear grupo para todos los elementos
-  piezas = new THREE.Group();
-  scene.add(piezas);
-
-  // Crear y añadir tablero
-  tablero = createChessBoard();
-  piezas.add(tablero);
-
+function placePieces(group) {
   // Crear piezas blancas
   const whitePieces = [
     createPiece("rook", "white", { x: 0, z: 0 }),
@@ -378,8 +370,20 @@ function loadScene() {
   }
 
   // Añadir piezas a la escena
-  whitePieces.forEach((piece) => piezas.add(piece));
-  blackPieces.forEach((piece) => piezas.add(piece));
+  whitePieces.forEach((piece) => group.add(piece));
+  blackPieces.forEach((piece) => group.add(piece));
+}
+
+function loadScene() {
+  // Crear grupo para todos los elementos
+  piezas = new THREE.Group();
+  scene.add(piezas);
+
+  // Crear y añadir tablero
+  tablero = createChessBoard();
+  piezas.add(tablero);
+
+  placePieces(piezas);
 
   // Añadir ejes para referencia (opcional)
   //scene.add(new THREE.AxesHelper(5));
@@ -486,19 +490,29 @@ function setupGUI() {
 }
 
 function resetPieces() {
-  // Eliminar todas las piezas actuales
+  // Limpiar selecciones y resaltados
+  clearHighlights();
+  selectedPiece = null;
+
+  // Eliminar TODAS las piezas existentes
+  const piecesToRemove = [];
   piezas.children.forEach((child) => {
     if (child !== tablero) {
-      piezas.remove(child);
+      piecesToRemove.push(child);
     }
   });
 
-  // Recargar las piezas
-  loadScene();
+  // Eliminar las piezas del grupo
+  piecesToRemove.forEach((piece) => piezas.remove(piece));
 
-  // Limpiar selección
-  clearHighlights();
-  selectedPiece = null;
+  // Asegurarse de que no queden piezas en la escena que fueron capturadas
+  scene.children.forEach((child) => {
+    if (child.userData && child.userData.type === "piece") {
+      scene.remove(child);
+    }
+  });
+
+  placePieces(piezas);
 }
 
 function updateAspectRatio() {
@@ -684,7 +698,7 @@ function onSingleClick(event) {
       if (!selectedPiece) {
         selectedPiece = selectedObject;
         // Destacar la pieza seleccionada
-        animarSeleccionFicha(selectedPiece);
+        animatePiece(selectedPiece);
         // Mostrar posibles movimientos
         highlightSquare(
           selectedPiece.userData.file,
@@ -699,7 +713,7 @@ function onSingleClick(event) {
         // Si ya hay una pieza seleccionada
         if (selectedPiece === selectedObject) {
           // Si se clickea la misma pieza, deseleccionarla
-          animarDeseleccionFicha(selectedPiece);
+          animateUnselectionPiece(selectedPiece);
           clearHighlights();
           selectedPiece = null;
 
@@ -707,10 +721,10 @@ function onSingleClick(event) {
           cameraControls.enabled = true;
         } else {
           // Si clickeamos otra pieza diferente, cambiamos la selección
-          animarDeseleccionFicha(selectedPiece);
+          animateUnselectionPiece(selectedPiece);
           clearHighlights();
           selectedPiece = selectedObject;
-          animarSeleccionFicha(selectedPiece);
+          animatePiece(selectedPiece);
           highlightSquare(
             selectedPiece.userData.file,
             selectedPiece.userData.rank,
@@ -738,7 +752,7 @@ function onSingleClick(event) {
 
       if (isValidMove) {
         // Mover la pieza al nuevo cuadrado
-        moverFichaACasilla(selectedPiece, targetFile, targetRank);
+        movePieceToField(selectedPiece, targetFile, targetRank);
 
         // Actualizar metadatos de la pieza
         selectedPiece.userData.file = targetFile;
@@ -747,7 +761,7 @@ function onSingleClick(event) {
       }
 
       // Limpiar selección
-      animarDeseleccionFicha(selectedPiece);
+      animateUnselectionPiece(selectedPiece);
       clearHighlights();
       selectedPiece = null;
 
@@ -757,7 +771,7 @@ function onSingleClick(event) {
   } else {
     // Si hacemos clic en el vacío y hay una pieza seleccionada, la deseleccionamos
     if (selectedPiece) {
-      animarDeseleccionFicha(selectedPiece);
+      animateUnselectionPiece(selectedPiece);
       clearHighlights();
       selectedPiece = null;
 
@@ -768,7 +782,7 @@ function onSingleClick(event) {
 }
 
 // Nueva función para animar la selección de una ficha
-function animarSeleccionFicha(ficha) {
+function animatePiece(ficha) {
   // Elevar la ficha y añadir un efecto para mostrar que está seleccionada
   new TWEEN.Tween(ficha.position)
     .to({ y: 1.2 }, 200) // Elevamos la ficha más para que sea más visible
@@ -777,7 +791,7 @@ function animarSeleccionFicha(ficha) {
 }
 
 // Nueva función para animar la deselección de una ficha
-function animarDeseleccionFicha(ficha) {
+function animateUnselectionPiece(ficha) {
   // Devolver la ficha a su altura normal
   new TWEEN.Tween(ficha.position)
     .to({ y: 0.1 }, 200) // Valor ajustado para el ajedrez
@@ -786,7 +800,7 @@ function animarDeseleccionFicha(ficha) {
 }
 
 // Nueva función para mover la ficha a una casilla
-function moverFichaACasilla(ficha, targetFile, targetRank) {
+function movePieceToField(ficha, targetFile, targetRank) {
   // Animar el movimiento a la casilla
   new TWEEN.Tween(ficha.position)
     .to(
@@ -801,16 +815,16 @@ function moverFichaACasilla(ficha, targetFile, targetRank) {
     .start()
     .onComplete(() => {
       // Verificar si hay otras piezas en esa casilla (captura)
-      verificarCaptura(ficha, targetFile, targetRank);
+      veriftCapture(ficha, targetFile, targetRank);
     });
 }
 
 // Nueva función para verificar si hay piezas para capturar
-function verificarCaptura(piezaMovida, file, rank) {
+function veriftCapture(movesPiece, file, rank) {
   piezas.children.forEach((child) => {
     // Si es una pieza diferente pero está en la misma casilla, la capturamos
     if (
-      child !== piezaMovida &&
+      child !== movesPiece &&
       child !== tablero &&
       child.userData &&
       child.userData.type === "piece" &&
