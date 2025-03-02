@@ -577,82 +577,188 @@ function highlightPossibleMoves(piece) {
   const type = piece.userData.pieceType;
   const color = piece.userData.color;
 
-  // Ejemplo básico de lógica de movimiento (simplificada)
+  // Función para comprobar si hay una pieza en una posición específica
+  function isPieceAt(x, z) {
+    let result = { occupied: false, pieceColor: null };
+
+    piezas.children.forEach((child) => {
+      if (
+        child.userData &&
+        child.userData.type === "piece" &&
+        child.userData.file === x &&
+        child.userData.rank === z
+      ) {
+        result.occupied = true;
+        result.pieceColor = child.userData.color;
+      }
+    });
+
+    return result;
+  }
+
+  // Función para verificar si un movimiento es válido considerando obstáculos
+  function isValidMove(x, z) {
+    // Verificar límites del tablero
+    if (x < 0 || x >= 8 || z < 0 || z >= 8) {
+      return false;
+    }
+
+    const pieceAtTarget = isPieceAt(x, z);
+
+    // Si está ocupado por una pieza del mismo color, no es válido
+    if (pieceAtTarget.occupied && pieceAtTarget.pieceColor === color) {
+      return false;
+    }
+
+    return true;
+  }
+
+  // Función para resaltar una casilla si el movimiento es válido
+  function highlightIfValid(x, z, captureOnly = false) {
+    const pieceAtTarget = isPieceAt(x, z);
+
+    // Si es un movimiento de captura y no hay pieza para capturar, o si se requiere captura pero no hay pieza enemiga
+    if (captureOnly && !pieceAtTarget.occupied) {
+      return false;
+    }
+
+    // Si es un movimiento de captura y hay una pieza amiga, no es válido
+    if (pieceAtTarget.occupied && pieceAtTarget.pieceColor === color) {
+      return false;
+    }
+
+    // Si la casilla está ocupada por una pieza enemiga
+    if (pieceAtTarget.occupied && pieceAtTarget.pieceColor !== color) {
+      highlightSquare(x, z, 0xff0000); // Destacar en rojo las capturas posibles
+      return true; // Encontró una pieza enemiga
+    } else if (!captureOnly) {
+      highlightSquare(x, z, 0x00ff00); // Destacar en verde los movimientos normales
+    }
+
+    return pieceAtTarget.occupied; // Devuelve true si encontró una pieza (para detener la búsqueda en esa dirección)
+  }
+
+  // Función para verificar movimientos en línea (torre, alfil, reina)
+  function checkLineMovements(directions) {
+    directions.forEach((dir) => {
+      for (let i = 1; i < 8; i++) {
+        const newFile = file + dir.x * i;
+        const newRank = rank + dir.y * i;
+
+        // Si salimos del tablero, detenemos la búsqueda en esta dirección
+        if (newFile < 0 || newFile >= 8 || newRank < 0 || newRank >= 8) {
+          break;
+        }
+
+        // Comprobamos si la casilla está ocupada
+        const pieceAtTarget = isPieceAt(newFile, newRank);
+
+        if (pieceAtTarget.occupied) {
+          // Si hay una pieza enemiga, podemos capturarla y terminamos esta dirección
+          if (pieceAtTarget.pieceColor !== color) {
+            highlightSquare(newFile, newRank, 0xff0000);
+          }
+          break; // Detenemos la búsqueda en esta dirección porque hay una pieza bloqueando
+        } else {
+          // Si no hay pieza, podemos movernos allí
+          highlightSquare(newFile, newRank, 0x00ff00);
+        }
+      }
+    });
+  }
+
+  // Lógica específica para cada tipo de pieza
   switch (type) {
     case "pawn":
       const direction = color === "white" ? 1 : -1;
       const startRank = color === "white" ? 1 : 6;
 
-      // Movimiento hacia adelante
-      highlightSquare(file, rank + direction, 0x00ff00);
+      // Verificar movimiento hacia adelante (solo si no hay piezas)
+      const frontSquare = isPieceAt(file, rank + direction);
+      if (!frontSquare.occupied) {
+        highlightSquare(file, rank + direction, 0x00ff00);
 
-      // Doble movimiento desde posición inicial
-      if (rank === startRank) {
-        highlightSquare(file, rank + 2 * direction, 0x00ff00);
+        // Verificar doble movimiento desde posición inicial
+        if (rank === startRank) {
+          const doubleSquare = isPieceAt(file, rank + 2 * direction);
+          if (!doubleSquare.occupied) {
+            highlightSquare(file, rank + 2 * direction, 0x00ff00);
+          }
+        }
+      }
+
+      // Verificar capturas diagonales
+      const leftDiag = isPieceAt(file - 1, rank + direction);
+      if (leftDiag.occupied && leftDiag.pieceColor !== color) {
+        highlightSquare(file - 1, rank + direction, 0xff0000);
+      }
+
+      const rightDiag = isPieceAt(file + 1, rank + direction);
+      if (rightDiag.occupied && rightDiag.pieceColor !== color) {
+        highlightSquare(file + 1, rank + direction, 0xff0000);
       }
       break;
 
     case "rook":
       // Movimientos horizontales y verticales
-      for (let i = 0; i < 8; i++) {
-        if (i !== file) highlightSquare(i, rank, 0x00ff00);
-        if (i !== rank) highlightSquare(file, i, 0x00ff00);
-      }
+      checkLineMovements([
+        { x: 1, y: 0 }, // Derecha
+        { x: -1, y: 0 }, // Izquierda
+        { x: 0, y: 1 }, // Arriba
+        { x: 0, y: -1 }, // Abajo
+      ]);
       break;
 
     case "bishop":
-      // Movimientos diagonales (simplificados)
-      for (let i = 1; i < 8; i++) {
-        if (file + i < 8 && rank + i < 8)
-          highlightSquare(file + i, rank + i, 0x00ff00);
-        if (file - i >= 0 && rank + i < 8)
-          highlightSquare(file - i, rank + i, 0x00ff00);
-        if (file + i < 8 && rank - i >= 0)
-          highlightSquare(file + i, rank - i, 0x00ff00);
-        if (file - i >= 0 && rank - i >= 0)
-          highlightSquare(file - i, rank - i, 0x00ff00);
-      }
+      // Movimientos diagonales
+      checkLineMovements([
+        { x: 1, y: 1 }, // Diagonal superior derecha
+        { x: 1, y: -1 }, // Diagonal inferior derecha
+        { x: -1, y: 1 }, // Diagonal superior izquierda
+        { x: -1, y: -1 }, // Diagonal inferior izquierda
+      ]);
       break;
 
     case "knight":
-      // Movimientos en L
+      // Movimientos en L (los caballos pueden saltar sobre otras piezas)
       const knightMoves = [
-        { x: 1, z: 2 },
-        { x: 2, z: 1 },
-        { x: -1, z: 2 },
-        { x: -2, z: 1 },
-        { x: 1, z: -2 },
-        { x: 2, z: -1 },
-        { x: -1, z: -2 },
-        { x: -2, z: -1 },
+        { x: 1, y: 2 },
+        { x: 2, y: 1 },
+        { x: -1, y: 2 },
+        { x: -2, y: 1 },
+        { x: 1, y: -2 },
+        { x: 2, y: -1 },
+        { x: -1, y: -2 },
+        { x: -2, y: -1 },
       ];
 
       knightMoves.forEach((move) => {
         const newFile = file + move.x;
-        const newRank = rank + move.z;
-        if (newFile >= 0 && newFile < 8 && newRank >= 0 && newRank < 8) {
-          highlightSquare(newFile, newRank, 0x00ff00);
+        const newRank = rank + move.y;
+
+        if (isValidMove(newFile, newRank)) {
+          const pieceAtTarget = isPieceAt(newFile, newRank);
+          if (pieceAtTarget.occupied) {
+            highlightSquare(newFile, newRank, 0xff0000); // Captura
+          } else {
+            highlightSquare(newFile, newRank, 0x00ff00); // Movimiento normal
+          }
         }
       });
       break;
 
     case "queen":
       // Combina movimientos de torre y alfil
-      for (let i = 0; i < 8; i++) {
-        if (i !== file) highlightSquare(i, rank, 0x00ff00);
-        if (i !== rank) highlightSquare(file, i, 0x00ff00);
-      }
-
-      for (let i = 1; i < 8; i++) {
-        if (file + i < 8 && rank + i < 8)
-          highlightSquare(file + i, rank + i, 0x00ff00);
-        if (file - i >= 0 && rank + i < 8)
-          highlightSquare(file - i, rank + i, 0x00ff00);
-        if (file + i < 8 && rank - i >= 0)
-          highlightSquare(file + i, rank - i, 0x00ff00);
-        if (file - i >= 0 && rank - i >= 0)
-          highlightSquare(file - i, rank - i, 0x00ff00);
-      }
+      checkLineMovements([
+        { x: 1, y: 0 }, // Derecha
+        { x: -1, y: 0 }, // Izquierda
+        { x: 0, y: 1 }, // Arriba
+        { x: 0, y: -1 }, // Abajo
+        { x: 1, y: 1 }, // Diagonal superior derecha
+        { x: 1, y: -1 }, // Diagonal inferior derecha
+        { x: -1, y: 1 }, // Diagonal superior izquierda
+        { x: -1, y: -1 }, // Diagonal inferior izquierda
+      ]);
       break;
 
     case "king":
@@ -663,8 +769,14 @@ function highlightPossibleMoves(piece) {
 
           const newFile = file + dx;
           const newRank = rank + dz;
-          if (newFile >= 0 && newFile < 8 && newRank >= 0 && newRank < 8) {
-            highlightSquare(newFile, newRank, 0x00ff00);
+
+          if (isValidMove(newFile, newRank)) {
+            const pieceAtTarget = isPieceAt(newFile, newRank);
+            if (pieceAtTarget.occupied) {
+              highlightSquare(newFile, newRank, 0xff0000); // Captura
+            } else {
+              highlightSquare(newFile, newRank, 0x00ff00); // Movimiento normal
+            }
           }
         }
       }
