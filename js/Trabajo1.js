@@ -25,6 +25,10 @@ let selectedPiece = null;
 let highlightedSquares = [];
 const L = 10; // Tamaño para las cámaras ortográficas
 
+// Variables para las piezas capturadas
+let capturedWhitePieces = [];
+let capturedBlackPieces = [];
+
 // Acciones
 init();
 loadScene();
@@ -383,6 +387,9 @@ function loadScene() {
   tablero = createChessBoard();
   piezas.add(tablero);
 
+  // Crear áreas para piezas capturadas
+  createCapturedAreas();
+
   placePieces(piezas);
 
   // Añadir ejes para referencia (opcional)
@@ -512,7 +519,39 @@ function resetPieces() {
     }
   });
 
+  // Reiniciar los arrays de piezas capturadas
+  capturedWhitePieces = [];
+  capturedBlackPieces = [];
+
   placePieces(piezas);
+}
+
+// Agregar áreas visuales para las piezas capturadas (opcional)
+function createCapturedAreas() {
+  // Crear plataformas para las piezas capturadas
+  const areaMaterial = new THREE.MeshStandardMaterial({
+    color: 0x888888,
+    roughness: 0.7,
+    metalness: 0.2,
+  });
+
+  // Área para piezas blancas capturadas (izquierda)
+  const whiteAreaGeometry = new THREE.BoxGeometry(2, 0.05, 8);
+  const whiteArea = new THREE.Mesh(whiteAreaGeometry, areaMaterial);
+  whiteArea.position.set(-6.5, -0.1, 0);
+  whiteArea.receiveShadow = true;
+  scene.add(whiteArea);
+
+  // Área para piezas negras capturadas (derecha)
+  const blackAreaGeometry = new THREE.BoxGeometry(2, 0.05, 8);
+  const blackArea = new THREE.Mesh(blackAreaGeometry, areaMaterial);
+  blackArea.position.set(6.5, -0.1, 0);
+  blackArea.receiveShadow = true;
+  scene.add(blackArea);
+
+  // Etiquetas para las áreas (opcional)
+  // Puedes crear geometrías de texto o utilizar sprites con texturas
+  // para indicar "Piezas blancas" y "Piezas negras"
 }
 
 function updateAspectRatio() {
@@ -784,7 +823,6 @@ function highlightPossibleMoves(piece) {
   }
 }
 
-// Modificación de la función onSingleClick
 function onSingleClick(event) {
   // 1. Capturar la posición de click
   let x = event.clientX;
@@ -835,7 +873,7 @@ function onSingleClick(event) {
 
     // Si hacemos click en una pieza
     if (selectedObject.userData.type === "piece") {
-      // Si no hay pieza seleccionada, seleccionamos esta
+      // CASO 1: Si no hay pieza seleccionada, seleccionamos esta
       if (!selectedPiece) {
         selectedPiece = selectedObject;
         // Destacar la pieza seleccionada
@@ -847,31 +885,68 @@ function onSingleClick(event) {
           0x0000ff
         );
         highlightPossibleMoves(selectedPiece);
-
-        // Desactivar temporalmente los controles de cámara mientras se selecciona una pieza
-        //cameraControls.enabled = false;
-      } else {
-        // Si ya hay una pieza seleccionada
+      }
+      // CASO 2: Ya hay una pieza seleccionada
+      else {
+        // 2.1: Si se clickea la misma pieza, deseleccionarla
         if (selectedPiece === selectedObject) {
-          // Si se clickea la misma pieza, deseleccionarla
           animateUnselectionPiece(selectedPiece);
           clearHighlights();
           selectedPiece = null;
-
-          // Reactivar los controles de cámara
           cameraControls.enabled = true;
-        } else {
-          // Si clickeamos otra pieza diferente, cambiamos la selección
-          animateUnselectionPiece(selectedPiece);
-          clearHighlights();
-          selectedPiece = selectedObject;
-          animatePiece(selectedPiece);
-          highlightSquare(
-            selectedPiece.userData.file,
-            selectedPiece.userData.rank,
-            0x0000ff
-          );
-          highlightPossibleMoves(selectedPiece);
+        }
+        // 2.2: Es una pieza diferente
+        else {
+          // Verificar si la pieza clickeada está en una posición válida para capturar
+          const targetFile = selectedObject.userData.file;
+          const targetRank = selectedObject.userData.rank;
+
+          // Comprobar si es un movimiento válido (está resaltado)
+          let isValidMove = false;
+          highlightedSquares.forEach((highlight) => {
+            if (
+              Math.abs(highlight.position.x - (targetFile - 3.5)) < 0.1 &&
+              Math.abs(highlight.position.z - (targetRank - 3.5)) < 0.1
+            ) {
+              isValidMove = true;
+            }
+          });
+
+          // Si es un movimiento válido y es una pieza enemiga (diferente color)
+          if (
+            isValidMove &&
+            selectedPiece.userData.color !== selectedObject.userData.color
+          ) {
+            // Capturar la pieza
+            veriftCapture(selectedPiece, targetFile, targetRank);
+
+            // Mover la pieza seleccionada a esa posición
+            movePieceToField(selectedPiece, targetFile, targetRank);
+
+            // Actualizar metadatos de la pieza
+            selectedPiece.userData.file = targetFile;
+            selectedPiece.userData.rank = targetRank;
+            selectedPiece.userData.moved = true;
+
+            // Limpiar selección
+            animateUnselectionPiece(selectedPiece);
+            clearHighlights();
+            selectedPiece = null;
+            cameraControls.enabled = true;
+          }
+          // Si no es un movimiento válido o es una pieza del mismo color, cambiar selección
+          else {
+            animateUnselectionPiece(selectedPiece);
+            clearHighlights();
+            selectedPiece = selectedObject;
+            animatePiece(selectedPiece);
+            highlightSquare(
+              selectedPiece.userData.file,
+              selectedPiece.userData.rank,
+              0x0000ff
+            );
+            highlightPossibleMoves(selectedPiece);
+          }
         }
       }
     }
@@ -892,6 +967,9 @@ function onSingleClick(event) {
       });
 
       if (isValidMove) {
+        // Verificar si hay una pieza en el destino para capturarla
+        veriftCapture(selectedPiece, targetFile, targetRank);
+
         // Mover la pieza al nuevo cuadrado
         movePieceToField(selectedPiece, targetFile, targetRank);
 
@@ -905,8 +983,6 @@ function onSingleClick(event) {
       animateUnselectionPiece(selectedPiece);
       clearHighlights();
       selectedPiece = null;
-
-      // Reactivar los controles de cámara
       cameraControls.enabled = true;
     }
   } else {
@@ -915,8 +991,6 @@ function onSingleClick(event) {
       animateUnselectionPiece(selectedPiece);
       clearHighlights();
       selectedPiece = null;
-
-      // Reactivar los controles de cámara
       cameraControls.enabled = true;
     }
   }
@@ -960,7 +1034,71 @@ function movePieceToField(ficha, targetFile, targetRank) {
     });
 }
 
-// Nueva función para verificar si hay piezas para capturar
+function moveToCapturedArea(capturedPiece) {
+  // Determinar la posición final según el color y número de piezas capturadas
+  const pieceColor = capturedPiece.userData.color;
+  const pieceType = capturedPiece.userData.pieceType;
+
+  // Coordenadas para el área de piezas capturadas
+  let targetX, targetY, targetZ;
+
+  if (pieceColor === "white") {
+    // Piezas blancas capturadas van a la izquierda del tablero
+    capturedWhitePieces.push(capturedPiece);
+    const index = capturedWhitePieces.length - 1;
+
+    // Configurar posición según la cantidad de piezas capturadas
+    targetX = -6 - (index % 2); // 2 columnas
+    targetZ = -3 + Math.floor(index / 2) * 0.7; // Filas de piezas
+    targetY = 0.1; // Altura estándar
+  } else {
+    // Piezas negras capturadas van a la derecha del tablero
+    capturedBlackPieces.push(capturedPiece);
+    const index = capturedBlackPieces.length - 1;
+
+    // Configurar posición según la cantidad de piezas capturadas
+    targetX = 6 + (index % 2); // 2 columnas
+    targetZ = -3 + Math.floor(index / 2) * 0.7; // Filas de piezas
+    targetY = 0.1; // Altura estándar
+  }
+
+  // Calcular una ruta de arco para la animación
+  const startY = capturedPiece.position.y;
+  const midY = 2; // Altura máxima del arco
+
+  // Animar el movimiento con una trayectoria en arco
+  new TWEEN.Tween({ t: 0 })
+    .to({ t: 1 }, 1000)
+    .onUpdate(function (obj) {
+      // Calcular la posición actual en la trayectoria
+      const t = obj.t;
+
+      // Interpolación de posiciones con un arco para la altura
+      capturedPiece.position.x =
+        capturedPiece.position.x * (1 - t) + targetX * t;
+
+      // Arco parabólico para la altura (y)
+      // Forma simplificada de una curva de Bézier cuadrática
+      capturedPiece.position.y =
+        startY * (1 - t) * (1 - t) + midY * 2 * (1 - t) * t + targetY * t * t;
+
+      capturedPiece.position.z =
+        capturedPiece.position.z * (1 - t) + targetZ * t;
+
+      // Escalar la pieza a un tamaño más pequeño
+      const scale = 1 - 0.4 * t; // Reducir al 60% del tamaño original
+      capturedPiece.scale.set(scale, scale, scale);
+    })
+    .easing(TWEEN.Easing.Cubic.Out)
+    .start()
+    .onComplete(() => {
+      // Actualizar metadatos de la pieza
+      capturedPiece.userData.captured = true;
+      capturedPiece.userData.file = -1; // Indicar que ya no está en el tablero
+      capturedPiece.userData.rank = -1;
+    });
+}
+
 function veriftCapture(movesPiece, file, rank) {
   piezas.children.forEach((child) => {
     // Si es una pieza diferente pero está en la misma casilla, la capturamos
@@ -972,14 +1110,8 @@ function veriftCapture(movesPiece, file, rank) {
       child.userData.file === file &&
       child.userData.rank === rank
     ) {
-      // Animación de captura (hacer desaparecer la pieza)
-      new TWEEN.Tween(child.position)
-        .to({ y: -5 }, 300)
-        .start()
-        .onComplete(() => {
-          // Remover la pieza capturada de la escena
-          piezas.remove(child);
-        });
+      // En vez de eliminar la pieza, la movemos al área de capturadas
+      moveToCapturedArea(child);
     }
   });
 }
