@@ -557,7 +557,13 @@ function highlightSquare(x, z, color) {
 
   const highlight = new THREE.Mesh(highlightGeometry, highlightMaterial);
   highlight.rotation.x = -Math.PI / 2;
-  highlight.position.set(x - 3.5, 0.01, z - 3.5);
+  highlight.position.set(x - 3.5, 0.08, z - 3.5);
+
+  highlight.userData = {
+    type: "highlight",
+    file: x,
+    rank: z,
+  };
 
   scene.add(highlight);
   highlightedSquares.push(highlight);
@@ -682,9 +688,32 @@ function onSingleClick(event) {
 
   const intersects = raycaster.intersectObjects(scene.children, true);
 
-  if (intersects.length > 0) {
+  // Filtrar los highlights de las intersecciones
+  let validIntersects = [];
+  for (let i = 0; i < intersects.length; i++) {
+    let obj = intersects[i].object;
+
+    // Verificar si el objeto o algún padre es un highlight
+    let isHighlight = false;
+    let current = obj;
+
+    while (current) {
+      if (current.userData && current.userData.type === "highlight") {
+        isHighlight = true;
+        break;
+      }
+      current = current.parent;
+    }
+
+    // Si no es un highlight, lo agregamos a las intersecciones válidas
+    if (!isHighlight) {
+      validIntersects.push(intersects[i]);
+    }
+  }
+
+  if (validIntersects.length > 0) {
     // Encontrar el objeto padre (pieza o cuadrado)
-    let selectedObject = intersects[0].object;
+    let selectedObject = validIntersects[0].object;
     while (selectedObject.parent && !selectedObject.userData.type) {
       selectedObject = selectedObject.parent;
     }
