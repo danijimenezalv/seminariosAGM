@@ -449,6 +449,7 @@ function setupGUI() {
       resetPieces();
     },
     nivelLuz: 0.5,
+    Sombras: true,
     mostrarAyudas: true,
   };
 
@@ -493,6 +494,11 @@ function setupGUI() {
       });
     });
   h.add(effectController, "mostrarAyudas").name("Mostrar ayudas de movimiento");
+  h.add(effectController, "Sombras").onChange((v) => {
+    scene.children.forEach((child) => {
+      child.castShadow = v;
+    });
+  });
   h.add(effectController, "reiniciarPosicion").name("Reiniciar tablero");
 }
 
@@ -524,6 +530,7 @@ function resetPieces() {
   capturedBlackPieces = [];
 
   placePieces(piezas);
+  createCapturedAreas();
 }
 
 // Agregar áreas visuales para las piezas capturadas (opcional)
