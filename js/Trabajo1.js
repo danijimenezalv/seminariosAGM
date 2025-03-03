@@ -449,7 +449,6 @@ function setupGUI() {
     },
     nivelLuz: 0.5,
     Sombras: true,
-    mostrarAyudas: true,
   };
 
   // Creación interfaz
@@ -492,7 +491,6 @@ function setupGUI() {
         }
       });
     });
-  h.add(effectController, "mostrarAyudas").name("Mostrar ayudas de movimiento");
   h.add(effectController, "Sombras").onChange((v) => {
     scene.children.forEach((child) => {
       child.castShadow = v;
@@ -615,8 +613,6 @@ function highlightSquare(x, z, color) {
 }
 
 function highlightPossibleMoves(piece) {
-  if (!effectController.mostrarAyudas) return;
-
   const file = piece.userData.file;
   const rank = piece.userData.rank;
   const type = piece.userData.pieceType;
