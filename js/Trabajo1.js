@@ -123,7 +123,6 @@ function init() {
 
   // Eventos
   window.addEventListener("resize", updateAspectRatio);
-  renderer.domElement.addEventListener("dblclick", onDoubleClick);
   renderer.domElement.addEventListener("click", onSingleClick);
 }
 
