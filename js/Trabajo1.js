@@ -831,15 +831,15 @@ function highlightPossibleMoves(piece) {
 }
 
 function onSingleClick(event) {
-  // 1. Capturar la posición de click
+  // Capturar la posición de click
   let x = event.clientX;
   let y = event.clientY;
 
-  // 2. Normalizar las coordenadas de click
+  // Normalizar las coordenadas de click
   x = (x / window.innerWidth) * 2 - 1;
   y = -(y / window.innerHeight) * 2 + 1;
 
-  // 3. Crear el rayo e intersectar con la escena
+  // Crear el rayo e intersectar con la escena
   const raycaster = new THREE.Raycaster();
   raycaster.setFromCamera(new THREE.Vector2(x, y), camera);
 
@@ -1003,7 +1003,6 @@ function onSingleClick(event) {
   }
 }
 
-// Nueva función para animar la selección de una ficha
 function animatePiece(ficha) {
   // Elevar la ficha y añadir un efecto para mostrar que está seleccionada
   new TWEEN.Tween(ficha.position)
@@ -1121,61 +1120,6 @@ function veriftCapture(movesPiece, file, rank) {
       moveToCapturedArea(child);
     }
   });
-}
-
-function onDoubleClick(event) {
-  // 1. Capturar la posición de doble click
-  let x = event.clientX;
-  let y = event.clientY;
-
-  // 2. Detectar la zona de click (para las diferentes vistas)
-  let derecha = false,
-    abajo = false;
-  let cam = null;
-
-  if (x > window.innerWidth / 2) {
-    derecha = true;
-    x -= window.innerWidth / 2;
-  }
-  if (y > window.innerHeight / 2) {
-    abajo = true;
-    y -= window.innerHeight / 2;
-  }
-
-  // Determinar qué cámara recibe el evento
-  if (derecha)
-    if (abajo) cam = camera;
-    else cam = perfil;
-  else if (abajo) cam = planta;
-  else cam = alzado;
-
-  // 3. Normalizar las coordenadas de click
-  x = (x * 4) / window.innerWidth - 1;
-  y = -((y * 4) / window.innerHeight) + 1;
-
-  // 4. Construir el rayo y detectar intersecciones
-  const rayo = new THREE.Raycaster();
-  rayo.setFromCamera(new THREE.Vector2(x, y), cam);
-
-  const intersects = rayo.intersectObjects(scene.children, true);
-
-  if (intersects.length > 0) {
-    // Encontrar el objeto padre
-    let selectedObject = intersects[0].object;
-    while (selectedObject.parent && !selectedObject.userData.type) {
-      selectedObject = selectedObject.parent;
-    }
-
-    // Animar la pieza seleccionada
-    if (selectedObject.userData && selectedObject.userData.type === "piece") {
-      // Ejemplo: hacer que la pieza salte
-      new TWEEN.Tween(selectedObject.position)
-        .to({ y: [1, 0.1] }, 1000)
-        .interpolation(TWEEN.Interpolation.Bezier)
-        .easing(TWEEN.Easing.Bounce.Out)
-        .start();
-    }
-  }
 }
 
 function update() {
